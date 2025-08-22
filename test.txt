@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<meta name="author" content="ジャステック 55023 吉岡太郎">
+	<title>FIDO認証時の画面表示項目</title>
+</head>
+<body>
+<h1>FIDO認証時の画面表示項目</h1>
+<p>2025年8月20日(水)</p >
+<p>本日、FIDO認証時に投資家様に表示される画面の項目について議論に上がりましたので、デモを共有いたします。</p >
+<p>以下はchallengeCodeとuserIDを適当に設定したPublicKeyCredentialCreationOptionsです。
+<br>
+値を入力して、挙動をご確認ください。</p >
+<pre>
+const publicKey = {
+  challenge: challengeCode,
+  rp: { id: <input type="text" id="pk_rp_id" value = "external-test-12.wb3dev.jp" />, name: <input type="text" id="pk_rp_name" value = "WB3 Test Server" /> },
+  user: {
+    id: userID,
+    name: <input type="text" id="pk_user_name" value = "jastec_user" />,
+    displayName:  <input type="text" id="pk_user_displayName" value = "戸越 太郎" />,
+  },
+  pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }], // ES256 & RS256
+}
+</pre>
+<p>右のボタンで WebAuth API を呼び出します：<button id="createCredentialWithPK">navigator.credentials.create({ publicKey })</button></p >
+<p>以下エラー：</p >
+<pre id="createCredentialWithPK_error">
+（なし）
+</pre>
+<p>以下、使用した publicKey：</p >
+<pre id="createCredentialWithPK_pk">
+（まだ）
+</pre>
+<p>返却されたPublicKeyCredential：</p >
+<pre id="createCredentialWithPK_credential">
+（まだ）
+</pre>	
+
+<h3>よくあるエラー</h3>
+<ul>
+	<li>
+	「SecurityError: Public-key credentials are only available to HTTPS origins with valid certificates…」
+	<br>
+	→ HTTPS 通さないと動きません。本ファイルは、外部接続環境などに置いて閲覧してください。
+	</li>
+	<li>
+	「SecurityError: The relying party ID is not a registrable domain suffix of, nor equal to the current domain.…」
+	<br>
+	→ rp.id と実際のドメインが一致しない場合にこのエラーとなります。FIDO認証がフィッシングに強いのはこのためです。
+	</li>
+	<li>
+	「NotAllowedError: WebAuthn is not supported on sites with TLS certificate errors.」
+	<br>
+	→ TLS エラーがあるので拒否されています。証明書が有効なサーバを通して閲覧してください。
+	</li>
+</ul>
+
+
+<h3>参考資料</h3>
+<ul>
+	<li><a target="_blank" href=" ">MDN - ウェブ認証API</a ></li>
+	<li><a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/API/CredentialsContainer/create">navigator.credentials.create()</a ></li>
+	<li><a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/API/PublicKeyCredential">PublicKeyCredential</a ></li>
+	<li><a href="https://developer.mozilla.org/en-US/docs/Web/API/PublicKeyCredentialCreationOptions">PublicKeyCredentialCreationOptions</a ></li>
+</ul>
+
+</body>
+
+<script>
+const challengeCode = new Uint8Array([0xD1, 0xB1, 0x22, 0x33, 0x7B, 0xA5, 0xC0, 0xDE]).buffer;
+const userID = new Uint8Array([79, 252, 83, 72, 214, 7, 89, 26]);
+
+
+document.querySelector("#createCredentialWithPK").addEventListener("click", async () => {
+	// エラー内容を表示用の<span>:
+	const errorSpan = document.querySelector("#createCredentialWithPK_error");
+	// 使用したpublickKeyを表示用の<pre>:
+	const publicKeyDisplayPre = document.querySelector("#createCredentialWithPK_pk");
+	const publicKeyResDisplayPre = document.querySelector("#createCredentialWithPK_credential");
+
+	// publicKeyのパラメータたちを取得：
+	const pk_rp_id = document.getElementById("pk_rp_id").value;
+	const pk_rp_name = document.getElementById("pk_rp_name").value;
+	const pk_user_name = document.getElementById("pk_user_name").value;
+	const pk_user_displayName = document.getElementById("pk_user_displayName").value;
+
+	// 上記で取得したパラメータを使ってpublicKeyを作る（PublicKeyCredentialCreationOptions）
+	const publicKey = {
+	  challenge: challengeCode,
+	  rp: { id: pk_rp_id, name: pk_rp_name },
+	  user: {
+	    id: userID,
+	    name: pk_user_name,
+	    displayName: pk_user_displayName,
+	  },
+	  pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }], // ES256 & RS256
+
+	  authenticatorSelection: {  
+        authenticatorAttachment: "platform",  
+        userVerification: "preferred"  
+	  },  
+	}
+	
+	// まずはエラー表示をクリアする。
+	errorSpan.textContent = "（なし）";
+	// 作った publicKey を表示する。
+	publicKeyDisplayPre.textContent = JSON.stringify(publicKey);
+
+	// createを試みる
+	try {
+		const credential = await navigator.credentials.create({ publicKey });
+		publicKeyResDisplayPre.textContent = JSON.stringify(credential);
+	} catch (err) {
+		// 無理だったのでエラーを表示する。
+		errorSpan.textContent = err;
+	}
+});
+
+
+</script>
+
+</html>
